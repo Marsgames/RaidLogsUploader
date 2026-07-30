@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RaidLogs Uploader</title>
+<meta name="description" content="Upload your WoW combat logs and get avoidable damage scores directly in your in-game tooltips.">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #080a10;
+  --surface: #0f1118;
+  --surface2: #161922;
+  --border: #1e2130;
+  --border2: #252a3a;
+  --text: #dde0ec;
+  --muted: #6b7090;
+  --label: #9098b8;
+  --gold: #c9a050;
+  --gold-dim: rgba(201,160,80,.12);
+  --gold-border: rgba(201,160,80,.25);
+  --blue: #4a7cf0;
+  --blue-dim: rgba(74,124,240,.12);
+  --orange: #e8915a;
+  --orange-dim: rgba(232,145,90,.12);
+  --green: #5ec48a;
+  --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  --mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  --max: 860px;
+  --r: 10px;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 15px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+a { color: var(--gold); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* ── NAV ── */
+nav {
+  position: sticky; top: 0; z-index: 100;
+  background: rgba(8,10,16,.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+  padding: 0 24px;
+  display: flex; align-items: center; justify-content: space-between;
+  height: 52px;
+}
+
+.nav-logo {
+  display: flex; align-items: center; gap: 10px;
+  font-weight: 700; font-size: 15px; letter-spacing: -.2px;
+}
+
+.nav-logo .dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--gold);
+  box-shadow: 0 0 8px var(--gold);
+}
+
+.lang-toggle {
+  display: flex; gap: 2px;
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  border-radius: 6px;
+  padding: 2px;
+}
+
+.lang-btn {
+  padding: 4px 10px;
+  border-radius: 4px;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  font: inherit; font-size: 12px; font-weight: 600;
+  cursor: pointer;
+  letter-spacing: .3px;
+  transition: background .15s, color .15s;
+}
+.lang-btn.active { background: var(--border2); color: var(--text); }
+
+/* ── HERO ── */
+.hero {
+  max-width: var(--max);
+  margin: 0 auto;
+  padding: 80px 24px 64px;
+  text-align: center;
+}
+
+.hero-eyebrow {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-size: 11px; font-weight: 700; letter-spacing: 1px;
+  text-transform: uppercase; color: var(--gold);
+  margin-bottom: 24px;
+}
+
+.hero-eyebrow::before,
+.hero-eyebrow::after {
+  content: '';
+  display: block; width: 32px; height: 1px;
+  background: var(--gold-border);
+}
+
+h1 {
+  font-size: clamp(36px, 6vw, 56px);
+  font-weight: 800;
+  letter-spacing: -1.5px;
+  line-height: 1.05;
+  color: #edf0fc;
+  margin-bottom: 20px;
+  text-wrap: balance;
+}
+
+h1 em {
+  font-style: normal;
+  color: var(--gold);
+}
+
+.hero-sub {
+  font-size: 17px;
+  color: var(--label);
+  max-width: 520px;
+  margin: 0 auto 40px;
+  line-height: 1.6;
+  text-wrap: balance;
+}
+
+.download-row {
+  display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.btn {
+  display: inline-flex; align-items: center; gap: 10px;
+  padding: 13px 24px;
+  border-radius: var(--r);
+  font: inherit; font-size: 14px; font-weight: 600;
+  cursor: pointer; border: none;
+  text-decoration: none;
+  transition: opacity .15s, transform .1s;
+}
+.btn:hover { opacity: .88; transform: translateY(-1px); text-decoration: none; }
+.btn:active { transform: translateY(0); opacity: .75; }
+
+.btn-win {
+  background: var(--blue);
+  color: white;
+}
+
+.btn-mac {
+  background: var(--surface2);
+  color: var(--text);
+  border: 1px solid var(--border2);
+}
+
+.btn svg { width: 18px; height: 18px; flex-shrink: 0; }
+
+.release-note {
+  font-size: 12px; color: var(--muted);
+}
+
+/* ── SCREENSHOTS ── */
+.screenshots {
+  max-width: 960px;
+  margin: 0 auto 80px;
+  padding: 0 24px;
+}
+
+.screenshots-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 12px;
+}
+
+.screenshot-slot {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  aspect-ratio: 16/10;
+  display: flex; align-items: center; justify-content: center;
+  overflow: hidden;
+}
+
+.screenshot-slot img {
+  width: 100%; height: 100%; object-fit: cover;
+  border-radius: var(--r);
+  display: none;
+}
+
+.screenshot-slot img.loaded { display: block; }
+
+.screenshot-placeholder {
+  color: var(--border2);
+  font-size: 13px;
+  text-align: center;
+  padding: 24px;
+}
+
+/* ── SECTION ── */
+section {
+  max-width: var(--max);
+  margin: 0 auto;
+  padding: 0 24px 72px;
+}
+
+.section-label {
+  font-size: 11px; font-weight: 700; letter-spacing: 1px;
+  text-transform: uppercase; color: var(--gold);
+  margin-bottom: 10px;
+}
+
+h2 {
+  font-size: clamp(24px, 4vw, 32px);
+  font-weight: 700; letter-spacing: -.5px;
+  color: #edf0fc;
+  margin-bottom: 36px;
+  text-wrap: balance;
+}
+
+/* ── STEPS ── */
+.steps { display: flex; flex-direction: column; gap: 0; }
+
+.step {
+  display: grid;
+  grid-template-columns: 48px 1fr;
+  gap: 0 20px;
+  position: relative;
+}
+
+.step-num-col {
+  display: flex; flex-direction: column; align-items: center;
+}
+
+.step-num {
+  width: 40px; height: 40px;
+  border-radius: 50%;
+  background: var(--gold-dim);
+  border: 1px solid var(--gold-border);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; font-weight: 700; color: var(--gold);
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.step-line {
+  flex: 1; width: 1px;
+  background: var(--border);
+  margin: 8px 0;
+}
+
+.step:last-child .step-line { display: none; }
+
+.step-content { padding-bottom: 32px; }
+.step:last-child .step-content { padding-bottom: 0; }
+
+.step-title {
+  font-size: 16px; font-weight: 600;
+  color: var(--text);
+  margin-bottom: 6px;
+  padding-top: 8px;
+}
+
+.step-desc { color: var(--label); font-size: 14px; line-height: 1.6; }
+
+code {
+  font-family: var(--mono);
+  font-size: 12px;
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  padding: 1px 6px;
+  border-radius: 4px;
+  color: var(--green);
+}
+
+/* ── SCORE BOX ── */
+.score-box {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 28px 32px;
+}
+
+.score-formula {
+  font-family: var(--mono);
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--gold);
+  text-align: center;
+  margin-bottom: 24px;
+  letter-spacing: .5px;
+}
+
+.score-states {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.score-state {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px 16px;
+  text-align: center;
+}
+
+.state-label {
+  font-family: var(--mono);
+  font-size: 11px; font-weight: 700; letter-spacing: .8px;
+  margin-bottom: 6px;
+}
+.state-pass .state-label { color: var(--green); }
+.state-fail .state-label { color: #f47878; }
+.state-unknown .state-label { color: var(--muted); }
+
+.state-desc { font-size: 12px; color: var(--label); line-height: 1.4; }
+
+.score-note { font-size: 13px; color: var(--muted); }
+
+/* ── FAQ ── */
+.faq { display: flex; flex-direction: column; gap: 1px; }
+
+.faq-item {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.faq-q {
+  width: 100%;
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  padding: 16px 20px;
+  background: none; border: none;
+  font: inherit; font-size: 14px; font-weight: 600; color: var(--text);
+  cursor: pointer; text-align: left;
+  transition: background .15s;
+}
+.faq-q:hover { background: var(--surface2); }
+
+.faq-icon {
+  width: 20px; height: 20px; flex-shrink: 0;
+  color: var(--muted);
+  transition: transform .2s;
+}
+.faq-item.open .faq-icon { transform: rotate(45deg); }
+
+.faq-a {
+  display: none;
+  padding: 0 20px 16px;
+  font-size: 13px; color: var(--label); line-height: 1.6;
+  border-top: 1px solid var(--border);
+  padding-top: 14px;
+}
+.faq-item.open .faq-a { display: block; }
+
+/* ── FOOTER ── */
+footer {
+  border-top: 1px solid var(--border);
+  padding: 28px 24px;
+  text-align: center;
+  font-size: 12px; color: var(--muted);
+}
+
+footer a { color: var(--muted); }
+footer a:hover { color: var(--label); }
+
+/* ── DIVIDER ── */
+.divider {
+  max-width: var(--max);
+  margin: 0 auto 72px;
+  padding: 0 24px;
+  border: none;
+  border-top: 1px solid var(--border);
+}
+
+/* ── ANIMATIONS ── */
+@media (prefers-reduced-motion: no-preference) {
+  .hero, section { animation: fadeUp .4s ease both; }
+  section:nth-of-type(2) { animation-delay: .05s; }
+  section:nth-of-type(3) { animation-delay: .1s; }
+  section:nth-of-type(4) { animation-delay: .15s; }
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── RESPONSIVE ── */
+@media (max-width: 600px) {
+  .score-states { grid-template-columns: 1fr; }
+  .download-row { flex-direction: column; align-items: center; }
+  .btn { width: 100%; max-width: 280px; justify-content: center; }
+}
+
+/* hidden lang */
+[data-lang] { display: none; }
+[data-lang].visible { display: revert; }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-logo">
+    <span class="dot"></span>
+    RaidLogs Uploader
+  </div>
+  <div class="lang-toggle">
+    <button class="lang-btn active" onclick="setLang('en')" id="btn-en">EN</button>
+    <button class="lang-btn" onclick="setLang('fr')" id="btn-fr">FR</button>
+  </div>
+</nav>
+
+<!-- ══ HERO ══ -->
+<div class="hero">
+  <div class="hero-eyebrow">World of Warcraft</div>
+
+  <h1 data-lang="en" class="visible">
+    Know who <em>actually</em><br>plays well.
+  </h1>
+  <h1 data-lang="fr">
+    Sachez qui joue<br><em>vraiment</em> bien.
+  </h1>
+
+  <p class="hero-sub" data-lang="en" class="visible">
+    Upload your combat log after each raid and get avoidable damage scores
+    for every player — visible directly in your in-game tooltips.
+  </p>
+  <p class="hero-sub" data-lang="fr">
+    Uploadez votre log de combat après chaque raid et obtenez le score de dégâts
+    évitables de chaque joueur — directement dans les tooltips en jeu.
+  </p>
+
+  <div class="download-row">
+    <a class="btn btn-win" href="https://github.com/ArgoEMT/RaidLogsUploader/releases/latest" id="dl-win">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801"/></svg>
+      <span data-lang="en" class="visible">Download for Windows</span>
+      <span data-lang="fr">Télécharger pour Windows</span>
+    </a>
+    <a class="btn btn-mac" href="https://github.com/ArgoEMT/RaidLogsUploader/releases/latest" id="dl-mac">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701"/></svg>
+      <span data-lang="en" class="visible">Download for macOS</span>
+      <span data-lang="fr">Télécharger pour macOS</span>
+    </a>
+  </div>
+
+  <p class="release-note" data-lang="en" class="visible">
+    Free &amp; open source · <a href="https://github.com/ArgoEMT/RaidLogsUploader/releases">All releases</a>
+  </p>
+  <p class="release-note" data-lang="fr">
+    Gratuit &amp; open source · <a href="https://github.com/ArgoEMT/RaidLogsUploader/releases">Toutes les versions</a>
+  </p>
+</div>
+
+<!-- ══ SCREENSHOTS ══ -->
+<div class="screenshots">
+  <div class="screenshots-grid" id="screenshots-grid">
+    <!-- Screenshots auto-populated from /screenshots folder -->
+  </div>
+</div>
+
+<!-- ══ HOW IT WORKS ══ -->
+<section>
+  <div class="section-label" data-lang="en" class="visible">How it works</div>
+  <div class="section-label" data-lang="fr">Comment ça marche</div>
+  <h2 data-lang="en" class="visible">Three steps, then forget about it.</h2>
+  <h2 data-lang="fr">Trois étapes, puis c'est automatique.</h2>
+
+  <div class="steps">
+    <div class="step">
+      <div class="step-num-col"><div class="step-num">1</div><div class="step-line"></div></div>
+      <div class="step-content">
+        <div class="step-title" data-lang="en" class="visible">Enable combat logging</div>
+        <div class="step-title" data-lang="fr">Activez le log de combat</div>
+        <div class="step-desc" data-lang="en" class="visible">
+          In the WoW chat box, type <code>/combatlog</code>. WoW will remember this setting across sessions — you only need to do it once.
+        </div>
+        <div class="step-desc" data-lang="fr">
+          Dans le chat WoW, tapez <code>/combatlog</code>. WoW retient ce paramètre entre les sessions — vous n'avez à le faire qu'une seule fois.
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num-col"><div class="step-num">2</div><div class="step-line"></div></div>
+      <div class="step-content">
+        <div class="step-title" data-lang="en" class="visible">Upload after your raid</div>
+        <div class="step-title" data-lang="fr">Uploadez après votre raid</div>
+        <div class="step-desc" data-lang="en" class="visible">
+          Open the uploader, drop your <code>WoWCombatLog.txt</code> file onto it, and click Upload. Your raw log never leaves your machine — only the computed scores are sent.
+        </div>
+        <div class="step-desc" data-lang="fr">
+          Ouvrez l'uploader, déposez votre fichier <code>WoWCombatLog.txt</code> dessus, et cliquez sur Upload. Votre log brut ne quitte jamais votre machine — seuls les scores calculés sont envoyés.
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num-col"><div class="step-num">3</div><div class="step-line"></div></div>
+      <div class="step-content">
+        <div class="step-title" data-lang="en" class="visible">Scores appear in-game</div>
+        <div class="step-title" data-lang="fr">Les scores apparaissent en jeu</div>
+        <div class="step-desc" data-lang="en" class="visible">
+          Install the <a href="https://www.curseforge.com/wow/addons/raidlogs">RaidLogs addon</a> and hover over any player in the Group Finder or in-raid — their scores appear automatically in the tooltip, per boss and per difficulty.
+        </div>
+        <div class="step-desc" data-lang="fr">
+          Installez l'addon <a href="https://www.curseforge.com/wow/addons/raidlogs">RaidLogs</a> et survolez n'importe quel joueur dans le chercheur de groupe ou en raid — ses scores apparaissent automatiquement dans le tooltip, par boss et par difficulté.
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- ══ SCORE ══ -->
+<section>
+  <div class="section-label" data-lang="en" class="visible">Scoring</div>
+  <div class="section-label" data-lang="fr">Score</div>
+  <h2 data-lang="en" class="visible">What the score means.</h2>
+  <h2 data-lang="fr">Ce que le score représente.</h2>
+
+  <div class="score-box">
+    <div class="score-formula">PASS ÷ (PASS + FAIL) × 100</div>
+
+    <div class="score-states">
+      <div class="score-state state-pass">
+        <div class="state-label">PASS</div>
+        <div class="state-desc" data-lang="en" class="visible">Zero failures on this mechanic while alive</div>
+        <div class="state-desc" data-lang="fr">Zéro erreur sur cette mécanique quand en vie</div>
+      </div>
+      <div class="score-state state-fail">
+        <div class="state-label">FAIL</div>
+        <div class="state-desc" data-lang="en" class="visible">At least one failure while alive</div>
+        <div class="state-desc" data-lang="fr">Au moins une erreur quand en vie</div>
+      </div>
+      <div class="score-state state-unknown">
+        <div class="state-label">?</div>
+        <div class="state-desc" data-lang="en" class="visible">Dead before the cast, or never exposed — excluded from score</div>
+        <div class="state-desc" data-lang="fr">Mort avant le cast, ou jamais exposé — exclu du score</div>
+      </div>
+    </div>
+
+    <p class="score-note" data-lang="en" class="visible">
+      Only avoidable mechanics are tracked: avoidable hits, soaks, dispels, interrupts. Unavoidable damage is ignored. Your displayed score is your <strong style="color:var(--text)">best result across all kills</strong> of that boss at that difficulty.
+    </p>
+    <p class="score-note" data-lang="fr">
+      Seules les mécaniques évitables sont suivies : dégâts évitables, soaks, dispels, interruptions. Les dégâts inévitables sont ignorés. Le score affiché est votre <strong style="color:var(--text)">meilleur résultat sur tous les kills</strong> de ce boss à cette difficulté.
+    </p>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- ══ FAQ ══ -->
+<section>
+  <div class="section-label">FAQ</div>
+  <h2 data-lang="en" class="visible">Common questions.</h2>
+  <h2 data-lang="fr">Questions fréquentes.</h2>
+
+  <div class="faq">
+
+    <div class="faq-item">
+      <button class="faq-q" onclick="toggleFaq(this)">
+        <span data-lang="en" class="visible">Scores are missing for some players.</span>
+        <span data-lang="fr">Des scores manquent pour certains joueurs.</span>
+        <svg class="faq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      </button>
+      <div class="faq-a">
+        <span data-lang="en" class="visible">Each upload covers the entire raid group — not just the uploader. If a player has no score, no one from that encounter has uploaded a log yet.</span>
+        <span data-lang="fr">Chaque upload couvre l'ensemble du groupe — pas seulement la personne qui uploade. Si un joueur n'a pas de score, c'est qu'aucun membre de ce combat n'a encore uploadé de log.</span>
+      </div>
+    </div>
+
+    <div class="faq-item">
+      <button class="faq-q" onclick="toggleFaq(this)">
+        <span data-lang="en" class="visible">The app shows "Offline".</span>
+        <span data-lang="fr">L'application affiche "Offline".</span>
+        <svg class="faq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      </button>
+      <div class="faq-a">
+        <span data-lang="en" class="visible">Check your internet connection. If it persists, the RaidLogs server may be temporarily unavailable — try again in a few minutes.</span>
+        <span data-lang="fr">Vérifiez votre connexion internet. Si le problème persiste, le serveur RaidLogs est peut-être temporairement indisponible — réessayez dans quelques minutes.</span>
+      </div>
+    </div>
+
+    <div class="faq-item">
+      <button class="faq-q" onclick="toggleFaq(this)">
+        <span data-lang="en" class="visible">I don't see all my encounters.</span>
+        <span data-lang="fr">Je ne vois pas tous mes combats.</span>
+        <svg class="faq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      </button>
+      <div class="faq-a">
+        <span data-lang="en" class="visible">Make sure <code>/combatlog</code> was active before the pull. Only Raid encounters are tracked — Mythic+, PvP, and solo content are not included.</span>
+        <span data-lang="fr">Assurez-vous que <code>/combatlog</code> était actif avant le pull. Seuls les combats de Raid sont suivis — le Mythic+, le PvP et le contenu solo ne sont pas inclus.</span>
+      </div>
+    </div>
+
+    <div class="faq-item">
+      <button class="faq-q" onclick="toggleFaq(this)">
+        <span data-lang="en" class="visible">Is my data private?</span>
+        <span data-lang="fr">Mes données sont-elles privées ?</span>
+        <svg class="faq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      </button>
+      <div class="faq-a">
+        <span data-lang="en" class="visible">Your raw combat log is parsed locally on your machine. Only the computed results (player names, scores, encounter metadata) are sent to the server. No log data is ever uploaded.</span>
+        <span data-lang="fr">Votre log de combat brut est analysé localement sur votre machine. Seuls les résultats calculés (noms de joueurs, scores, métadonnées de combat) sont envoyés au serveur. Aucune donnée de log n'est uploadée.</span>
+      </div>
+    </div>
+
+    <div class="faq-item">
+      <button class="faq-q" onclick="toggleFaq(this)">
+        <span data-lang="en" class="visible">Windows SmartScreen is blocking the app.</span>
+        <span data-lang="fr">Windows SmartScreen bloque l'application.</span>
+        <svg class="faq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      </button>
+      <div class="faq-a">
+        <span data-lang="en" class="visible">Click <strong>More info</strong> → <strong>Run anyway</strong>. This warning appears because the app is not signed with a paid certificate, not because it's harmful.</span>
+        <span data-lang="fr">Cliquez sur <strong>Plus d'informations</strong> → <strong>Exécuter quand même</strong>. Cet avertissement apparaît car l'application n'est pas signée avec un certificat payant, pas parce qu'elle est dangereuse.</span>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<footer>
+  <p>
+    RaidLogs Uploader ·
+    <a href="https://github.com/ArgoEMT/RaidLogsUploader" data-lang="en" class="visible">Source code</a>
+    <a href="https://github.com/ArgoEMT/RaidLogsUploader" data-lang="fr">Code source</a>
+    ·
+    <a href="https://www.curseforge.com/wow/addons/raidlogs" data-lang="en" class="visible">RaidLogs addon</a>
+    <a href="https://www.curseforge.com/wow/addons/raidlogs" data-lang="fr">Addon RaidLogs</a>
+  </p>
+</footer>
+
+<script>
+// ── Language ──
+function setLang(lang) {
+  document.querySelectorAll('[data-lang]').forEach(el => {
+    el.classList.toggle('visible', el.dataset.lang === lang);
+  });
+  document.getElementById('btn-en').classList.toggle('active', lang === 'en');
+  document.getElementById('btn-fr').classList.toggle('active', lang === 'fr');
+  document.documentElement.lang = lang;
+  localStorage.setItem('rl-lang', lang);
+}
+
+const saved = localStorage.getItem('rl-lang');
+const browser = navigator.language?.startsWith('fr') ? 'fr' : 'en';
+setLang(saved || browser);
+
+// ── FAQ ──
+function toggleFaq(btn) {
+  btn.closest('.faq-item').classList.toggle('open');
+}
+
+// ── Screenshots ──
+// Drop screenshots into /screenshots/ and they'll appear here automatically
+// via GitHub Pages. List known filenames or use a manifest if needed.
+// For now, slots are shown only if images load.
+const screenshotFiles = [
+  'screenshots/uploader.png',
+  'screenshots/visualizer.png',
+  'screenshots/settings.png',
+];
+
+const grid = document.getElementById('screenshots-grid');
+screenshotFiles.forEach(src => {
+  const slot = document.createElement('div');
+  slot.className = 'screenshot-slot';
+  const img = document.createElement('img');
+  img.src = src;
+  img.alt = '';
+  img.onload = () => {
+    img.classList.add('loaded');
+    slot.querySelector('.screenshot-placeholder')?.remove();
+  };
+  slot.appendChild(img);
+  grid.appendChild(slot);
+});
+
+if (screenshotFiles.length === 0) {
+  grid.style.display = 'none';
+}
+</script>
+</body>
+</html>
