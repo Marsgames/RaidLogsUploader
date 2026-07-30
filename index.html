@@ -363,6 +363,41 @@ code {
 }
 .faq-item.open .faq-a { display: block; }
 
+/* ── LIGHTBOX ── */
+.lightbox {
+  display: none;
+  position: fixed; inset: 0; z-index: 200;
+  background: rgba(0,0,0,.85);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  align-items: center; justify-content: center;
+  cursor: zoom-out;
+  padding: 24px;
+}
+.lightbox.open { display: flex; }
+
+.lightbox img {
+  max-width: 100%; max-height: 90vh;
+  border-radius: var(--r);
+  box-shadow: 0 32px 80px rgba(0,0,0,.6);
+  cursor: default;
+  object-fit: contain;
+}
+
+.lightbox-close {
+  position: fixed; top: 20px; right: 20px;
+  width: 36px; height: 36px;
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  border-radius: 50%;
+  color: var(--label);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  font-size: 18px; line-height: 1;
+  transition: background .15s, color .15s;
+}
+.lightbox-close:hover { background: var(--border2); color: var(--text); }
+
 /* ── FOOTER ── */
 footer {
   border-top: 1px solid var(--border);
@@ -633,6 +668,11 @@ footer a:hover { color: var(--label); }
   </div>
 </section>
 
+<div class="lightbox" id="lightbox" onclick="closeLightbox()">
+  <button class="lightbox-close" onclick="closeLightbox()" aria-label="Close">✕</button>
+  <img id="lightbox-img" src="" alt="" onclick="event.stopPropagation()">
+</div>
+
 <footer>
   <p>
     RaidLogs Uploader ·
@@ -685,6 +725,8 @@ screenshotFiles.forEach(src => {
   img.onload = () => {
     img.classList.add('loaded');
     slot.querySelector('.screenshot-placeholder')?.remove();
+    slot.style.cursor = 'zoom-in';
+    slot.onclick = () => openLightbox(src);
   };
   slot.appendChild(img);
   grid.appendChild(slot);
@@ -692,6 +734,22 @@ screenshotFiles.forEach(src => {
 
 if (screenshotFiles.length === 0) {
   grid.style.display = 'none';
+}
+
+function openLightbox(src) {
+  const lb = document.getElementById('lightbox');
+  document.getElementById('lightbox-img').src = src;
+  lb.classList.add('open');
+  document.addEventListener('keydown', onLightboxKey);
+}
+
+function closeLightbox() {
+  document.getElementById('lightbox').classList.remove('open');
+  document.removeEventListener('keydown', onLightboxKey);
+}
+
+function onLightboxKey(e) {
+  if (e.key === 'Escape') closeLightbox();
 }
 </script>
 </body>
