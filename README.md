@@ -81,7 +81,7 @@ Your displayed score is your **best result across all kills** of that boss at th
 ## FAQ
 
 **Scores are missing for some players.**  
-Only players whose logs have been uploaded will have scores. More uploads from the same raid = more complete data.
+Each upload covers the entire raid group — not just the uploader. If a player has no score, no one from that encounter has uploaded a log yet.
 
 **The app shows "Offline".**  
 Check your internet connection. If it persists, the RaidLogs server may be temporarily unavailable — try again shortly.
